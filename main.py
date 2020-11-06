@@ -121,14 +121,15 @@ if __name__ == '__main__':
     parser.add_argument("-j",       "--jupyter",     default=False,      type=bool)
     parser.add_argument("-w",       "--write_video", default=None,       type=str)
 
+    parser.add_argument("-rt",       "--runtime",    default=5,          type=int)
     parser.add_argument("-c",       "--camera",      default="demo.avi", type=str)
-    parser.add_argument("-disca", "--display_camera", default=False, type=bool)
+    parser.add_argument("-disca",   "--display_camera", default=False,   type=bool)
 
     parser.add_argument("-d",       "--draw_lines",  default=True,       type=bool)
     parser.add_argument("-f",       "--draw_fps",    default=True,       type=bool)
 
-    parser.add_argument("-ctl",     "--controller", default=True,      type=bool)
-    parser.add_argument("-fwd", "--forward", default=5.0,      type=float)
+    parser.add_argument("-ctl",     "--controller",  default=True,        type=bool)
+    parser.add_argument("-fwd",     "--forward",     default=5.0,      type=float)
 
     args = parser.parse_args()
 
@@ -149,8 +150,7 @@ if __name__ == '__main__':
         out = cv2.VideoWriter(args.write_video, cv2.VideoWriter_fourcc(*'MJPG'), 25.0, (640, 480))
 
     while(True):
-        if args.draw_fps:
-            start = time.time()
+        start = time.time()
         ret, frame = cap.read()
         # print('frame.shape:', frame.shape)
         if ret:
@@ -182,7 +182,7 @@ if __name__ == '__main__':
                         cv2.putText(frame, 'FPS: {:.0f}'.format(fps), (10, 250), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 255), 1,
                                     cv2.LINE_AA)
                         # print("\rFPS: {:.0f}".format(fps), end='')
-                    
+
                     if args.jupyter:
                         imgbox.value = cv2.imencode('.jpg', frame)[1].tobytes()
                     else:
@@ -199,6 +199,8 @@ if __name__ == '__main__':
             if args.write_video:
                 out.write(frame)
             if cv2.waitKey(1) & 0xFF == ord('q') or cv2.waitKey(1) & 0xFF == 27:
+                break
+            if args.runtime != -1 and time.time()-start >= args.runtime:
                 break
         else:
             break
