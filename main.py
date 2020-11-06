@@ -120,11 +120,16 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument("-j",       "--jupyter",     default=False,      type=bool)
     parser.add_argument("-w",       "--write_video", default=None,       type=str)
+
     parser.add_argument("-c",       "--camera",      default="demo.avi", type=str)
+    parser.add_argument("-disca", "--display_camera", default=False, type=bool)
+
     parser.add_argument("-d",       "--draw_lines",  default=True,       type=bool)
     parser.add_argument("-f",       "--draw_fps",    default=True,       type=bool)
+
     parser.add_argument("-ctl",     "--controller", default=True,      type=bool)
     parser.add_argument("-fwd", "--forward", default=5.0,      type=float)
+
     args = parser.parse_args()
 
     if args.jupyter:
@@ -169,18 +174,19 @@ if __name__ == '__main__':
                 #                 cv2.line(test, (x1, y1), (x2, y2), (255, 0, 0), 3) # 線條
                 # print(lines)
                 frame, distance_x = draw_lanes(frame, lines)
-                if args.draw_fps:
-                    end = time.time()
-                    # 計算FPS
-                    fps = 1 / (end - start)
-                    cv2.putText(frame, 'FPS: {:.0f}'.format(fps), (10, 250), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 255), 1,
-                                cv2.LINE_AA)
-                    # print("\rFPS: {:.0f}".format(fps), end='')
-
-                if args.jupyter:
-                    imgbox.value = cv2.imencode('.jpg', frame)[1].tobytes()
-                else:
-                    cv2.imshow('frame', frame)
+                if args.display_camera:
+                    if args.draw_fps:
+                        end = time.time()
+                        # 計算FPS
+                        fps = 1 / (end - start)
+                        cv2.putText(frame, 'FPS: {:.0f}'.format(fps), (10, 250), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 255), 1,
+                                    cv2.LINE_AA)
+                        # print("\rFPS: {:.0f}".format(fps), end='')
+                    
+                    if args.jupyter:
+                        imgbox.value = cv2.imencode('.jpg', frame)[1].tobytes()
+                    else:
+                        cv2.imshow('frame', frame)
 
                 # 控制方向
                 if args.controller:
