@@ -148,7 +148,7 @@ if __name__ == '__main__':
     parser.add_argument("-j", "--jupyter", default=False, type=bool)
     parser.add_argument("-w", "--write_video", default=None, type=str)
 
-    parser.add_argument("-rt", "--runtime", default=3, type=int)
+    parser.add_argument("-rt", "--runtime", default=10, type=int)
     parser.add_argument("-c", "--camera", default=0, type=int)
     parser.add_argument("-disca", "--display_camera", default=True, type=bool)
 
@@ -173,16 +173,22 @@ if __name__ == '__main__':
 
         robot = Robot()
 
-    cap = cv2.VideoCapture('../demo.avi')
+    # cap = cv2.VideoCapture('../demo.avi')
     # cap = cv2.VideoCapture(args.camera)
-    # cap = cv2.VideoCapture(gstreamer_pipeline(flip_method=0, framerate=30), cv2.CAP_GSTREAMER)
+    cap = cv2.VideoCapture(gstreamer_pipeline(flip_method=0, framerate=30), cv2.CAP_GSTREAMER)
     # cap = cv2.VideoCapture(0)
+
+    # while True:
+    #     ret_val, img = cap.read();
+    #     cv2.imshow('demo',img)
+    #     cv2.waitKey(10)
 
     if args.write_video:
         out = cv2.VideoWriter(args.write_video, cv2.VideoWriter_fourcc(*'MJPG'), 25.0, (640, 480))
 
-    start = time.time()
+    sys_start = time.time()
     while (True):
+        start = time.time()
         ret, frame = cap.read()
         # print('frame.shape:', frame.shape)
         if ret:
@@ -194,7 +200,7 @@ if __name__ == '__main__':
             canny = cv2.Canny(th1, 100, 200)
 
             lines = []
-            test = frame
+            # test = frame
             try:
                 lines = cv2.HoughLinesP(th1, 1, np.pi / 180, 150)
                 for line in lines:
@@ -204,36 +210,37 @@ if __name__ == '__main__':
                     if y2 < 50:
                         line[3] = 150
                 #                 cv2.line(test, (x1, y1), (x2, y2), (255, 0, 0), 3) # 線條
-                # print(lines)
-                frame, distance_x = draw_lanes(frame, lines)
-                if args.display_camera:
-                    if args.draw_fps:
-                        end = time.time()
-                        # 計算FPS
-                        fps = 1 / (end - start)
-                        cv2.putText(frame, 'FPS: {:.0f}'.format(fps), (10, 250), cv2.FONT_HERSHEY_TRIPLEX, 1,
-                                    (0, 255, 255), 1,
-                                    cv2.LINE_AA)
-                        # print("\rFPS: {:.0f}".format(fps), end='')
 
-                    if args.jupyter:
-                        imgbox.value = cv2.imencode('.jpg', frame)[1].tobytes()
-                    else:
-                        cv2.imshow('frame', frame)
+                print(lines)
+                frame, distance_x = draw_lanes(frame, lines)
 
                 # 控制方向
                 if args.controller:
                     robot.forward(args.forward)
-
             except:
                 # print("ee")
                 pass
+
+            if args.display_camera:
+                if args.draw_fps:
+                    end = time.time()
+                    # 計算FPS
+                    fps = 1 / (end - start)
+                    cv2.putText(frame, 'FPS: {:.0f}'.format(fps), (10, 250), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 255),
+                                1,
+                                cv2.LINE_AA)
+                    # print("\rFPS: {:.0f}".format(fps), end='')
+
+                if args.jupyter:
+                    imgbox.value = cv2.imencode('.jpg', frame)[1].tobytes()
+                else:
+                    cv2.imshow('frame', frame)
 
             if args.write_video:
                 out.write(frame)
             if cv2.waitKey(1) & 0xFF == ord('q') or cv2.waitKey(1) & 0xFF == 27:
                 break
-            if args.runtime != -1 and time.time() - start >= args.runtime:
+            if args.runtime != -1 and time.time() - sys_start >= args.runtime:
                 break
         else:
             break
