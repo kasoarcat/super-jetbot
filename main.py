@@ -1,7 +1,10 @@
+#!/usr/bin/python
+# -*- coding: UTF-8 -*-
+
 import cv2
 import numpy as np
 import time
-from sklearn.metrics.pairwise import cosine_similarity
+#from sklearn.metrics.pairwise import cosine_similarity
 from argparse import ArgumentParser
 
 def draw_lanes(img, lines):
