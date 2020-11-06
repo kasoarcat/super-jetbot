@@ -122,7 +122,7 @@ if __name__ == '__main__':
     parser.add_argument("-w",       "--write_video",    default=None,       type=str)
 
     parser.add_argument("-rt",       "--runtime",       default=5,          type=int)
-    parser.add_argument("-c",       "--camera",         default="demo.avi", type=str)
+    parser.add_argument("-c",       "--camera",         default=0,        type=int)
     parser.add_argument("-disca",   "--display_camera", default=False,      type=bool)
 
     parser.add_argument("-d",       "--draw_lines",     default=True,       type=bool)
