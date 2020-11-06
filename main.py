@@ -88,7 +88,7 @@ def draw_lanes(img, lines):
 
     # d. 填充車道區域
 #     cv2.fillPoly(img, vtxs, (100, 200, 100))
-    return img
+    return img, distance_x
     
 def clean_lines(lines, threshold):
     # 迭代計算斜率均值，排除掉與差值差異較大的數據
@@ -118,11 +118,13 @@ def least_squares_fit(point_list, ymin, ymax):
 
 if __name__ == '__main__':
     parser = ArgumentParser()
-    parser.add_argument("-j", "--jupyter",     default=False,      type=bool)
-    parser.add_argument("-w", "--write_video", default=None,       type=str)
-    parser.add_argument("-c", "--camera",      default="demo.avi", type=str)
-    parser.add_argument("-d", "--draw_lines",  default=True,       type=bool)
-    parser.add_argument("-f", "--draw_fps",    default=True,       type=bool)
+    parser.add_argument("-j",       "--jupyter",     default=False,      type=bool)
+    parser.add_argument("-w",       "--write_video", default=None,       type=str)
+    parser.add_argument("-c",       "--camera",      default="demo.avi", type=str)
+    parser.add_argument("-d",       "--draw_lines",  default=True,       type=bool)
+    parser.add_argument("-f",       "--draw_fps",    default=True,       type=bool)
+    parser.add_argument("-ctl",     "--controller", default=True,      type=bool)
+    parser.add_argument("-fwd", "--forward", default=5.0,      type=float)
     args = parser.parse_args()
 
     if args.jupyter:
@@ -132,6 +134,10 @@ if __name__ == '__main__':
 
         imgbox = widgets.Image(format='jpg')
         display.display(imgbox)
+
+    if args.controller:
+        from jetbot import Robot
+        robot = Robot()
 
     cap = cv2.VideoCapture(args.camera)
     if args.write_video:
@@ -162,7 +168,7 @@ if __name__ == '__main__':
                         line[3] = 150
                 #                 cv2.line(test, (x1, y1), (x2, y2), (255, 0, 0), 3) # 線條
                 # print(lines)
-                frame = draw_lanes(frame, lines)
+                frame, distance_x = draw_lanes(frame, lines)
                 if args.draw_fps:
                     end = time.time()
                     # 計算FPS
@@ -175,6 +181,11 @@ if __name__ == '__main__':
                     imgbox.value = cv2.imencode('.jpg', frame)[1].tobytes()
                 else:
                     cv2.imshow('frame', frame)
+
+                # 控制方向
+                if args.controller:
+                    robot.forward(args.forward)
+
             except:
                 # print("ee")
                 pass
@@ -186,6 +197,7 @@ if __name__ == '__main__':
         else:
             break
 
+    robot.stop()
     cap.release()
     if args.write_video:
         out.release()
