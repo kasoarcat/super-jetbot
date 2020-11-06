@@ -156,7 +156,7 @@ if __name__ == '__main__':
     parser.add_argument("-f", "--draw_fps", default=True, type=bool)
 
     parser.add_argument("-ctl", "--controller", default=True, type=bool)
-    parser.add_argument("-fwd", "--forward", default=5.0, type=float)
+    parser.add_argument("-fwd", "--forward", default=0.5, type=float)
 
     args = parser.parse_args()
 
@@ -186,6 +186,10 @@ if __name__ == '__main__':
     if args.write_video:
         out = cv2.VideoWriter(args.write_video, cv2.VideoWriter_fourcc(*'MJPG'), 25.0, (640, 480))
 
+    # 控制方向
+    if args.controller:
+        robot.forward(args.forward)
+
     sys_start = time.time()
     while (True):
         start = time.time()
@@ -211,12 +215,8 @@ if __name__ == '__main__':
                         line[3] = 150
                 #                 cv2.line(test, (x1, y1), (x2, y2), (255, 0, 0), 3) # 線條
 
-                print(lines)
+                # print(lines)
                 frame, distance_x = draw_lanes(frame, lines)
-
-                # 控制方向
-                if args.controller:
-                    robot.forward(args.forward)
             except:
                 # print("ee")
                 pass
