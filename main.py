@@ -116,13 +116,23 @@ def least_squares_fit(point_list, ymin, ymax):
     xmax = int(fit_fn(ymax))
     return [[xmin, ymin], [xmax, ymax]]
 
+def gstreamer_pipeline(capture_width=640, capture_height=480, display_width=640, display_height=480, framerate=30, flip_method=0):
+    return ('nvarguscamerasrc ! '
+            'video/x-raw(momory:NVMM), '
+            'width=(int)%d, height=(int)%d, '
+            'format=(string)NV12, framerate=(fraction)%d/1 ! '
+            'nvvidconv flip-method=%d ! '
+            'video/x-raw, width=(int)%d, height=(int)%d, format=(string)BGRx ! '
+            'videoconvert ! '
+            'video/x-raw, format=(string)BGR ! appsink' % (capture_width, capture_height, framerate, flip_method, display_width, display_height))
+
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument("-j",       "--jupyter",        default=False,      type=bool)
     parser.add_argument("-w",       "--write_video",    default=None,       type=str)
 
     parser.add_argument("-rt",       "--runtime",       default=5,          type=int)
-    parser.add_argument("-c",       "--camera",         default=0,        type=int)
+    parser.add_argument("-c",       "--camera",         default=0,          type=int)
     parser.add_argument("-disca",   "--display_camera", default=False,      type=bool)
 
     parser.add_argument("-d",       "--draw_lines",     default=True,       type=bool)
@@ -141,11 +151,13 @@ if __name__ == '__main__':
         imgbox = widgets.Image(format='jpg')
         display.display(imgbox)
 
-    if args.controller:
-        from jetbot import Robot
-        robot = Robot()
+    # if args.controller:
+    #     from jetbot import Robot
+    #     robot = Robot()
 
-    cap = cv2.VideoCapture(args.camera)
+    cap = cv2.VideoCapture(gstreamer_pipeline(flip_method=0, framerate=30), cv2.CAP_GSTREAMER)
+    # cap = cv2.VideoCapture(0)
+
     if args.write_video:
         out = cv2.VideoWriter(args.write_video, cv2.VideoWriter_fourcc(*'MJPG'), 25.0, (640, 480))
 
@@ -189,8 +201,8 @@ if __name__ == '__main__':
                         cv2.imshow('frame', frame)
 
                 # 控制方向
-                if args.controller:
-                    robot.forward(args.forward)
+                # if args.controller:
+                #     robot.forward(args.forward)
 
             except:
                 # print("ee")
@@ -205,7 +217,7 @@ if __name__ == '__main__':
         else:
             break
 
-    robot.stop()
+    # robot.stop()
     cap.release()
     if args.write_video:
         out.release()
