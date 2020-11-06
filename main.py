@@ -4,8 +4,9 @@
 import cv2
 import numpy as np
 import time
-#from sklearn.metrics.pairwise import cosine_similarity
+# from sklearn.metrics.pairwise import cosine_similarity
 from argparse import ArgumentParser
+
 
 def draw_lanes(img, lines):
     # a. 劃分左右車道
@@ -14,9 +15,9 @@ def draw_lanes(img, lines):
     for line in lines:
         for x1, y1, x2, y2 in line:
             sx = (x2 - x1)
-            if sx <= 0: # 跳過x相差為0,避免除0
+            if sx <= 0:  # 跳過x相差為0,避免除0
                 continue
-            k = (y2 - y1) / sx # 斜率
+            k = (y2 - y1) / sx  # 斜率
             if k < 0:
                 left_lines.append(line)
             else:
@@ -24,7 +25,7 @@ def draw_lanes(img, lines):
 
     if (len(left_lines) <= 0 or len(right_lines) <= 0):
         return
-    
+
     # b. 清理異常數據，迭代計算斜率均值，排除掉與差值差異較大的數據
     clean_lines(left_lines, 0.1)
     clean_lines(right_lines, 0.1)
@@ -40,7 +41,7 @@ def draw_lanes(img, lines):
     right_points = [(x1, y1) for line in right_lines for x1, y1, x2, y2 in line]
     right_points = right_points + [(x2, y2) for line in right_lines for x1, y1, x2, y2 in line]
     minY = min(minY, min(right_points[1]))
-#     print(minY)
+    #     print(minY)
 
     minY = 80
     # 最小二乘法擬合
@@ -48,48 +49,52 @@ def draw_lanes(img, lines):
     right_results = least_squares_fit(right_points, minY, img.shape[1])
 
     if args.draw_lines:
-#         cv2.line(img, (left_results[0][0], left_results[0][1]), (left_results[1][0], left_results[1][1]), (0, 0, 255), 2)      # 左線
-#         cv2.line(img, (right_results[0][0], right_results[0][1]), (right_results[1][0], right_results[1][1]), (0, 0, 255), 2)  # 右線
-#         print('left_results:', left_results)
-#         print('right_results:', right_results)
+        #         cv2.line(img, (left_results[0][0], left_results[0][1]), (left_results[1][0], left_results[1][1]), (0, 0, 255), 2)      # 左線
+        #         cv2.line(img, (right_results[0][0], right_results[0][1]), (right_results[1][0], right_results[1][1]), (0, 0, 255), 2)  # 右線
+        #         print('left_results:', left_results)
+        #         print('right_results:', right_results)
 
         # 實際中心線
-        car_center1 = [int((left_results[1][0] + right_results[1][0]) / 2), int((left_results[1][1] + right_results[1][1]) / 2)] # 下中的一個點
-        car_center2 = [int((left_results[0][0] + right_results[0][0]) / 2), int((left_results[0][1] + right_results[0][1]) / 2)] # 上中一個點
-        car_center1[1] = min(car_center1[1], img.shape[0]) # 大於高度設定成高度
-        car_center2[1] = min(car_center2[1], img.shape[0]) # 大於高度設定成高度
-#         print('car_center1:', car_center1)
-#         print('car_center2:', car_center2)
+        car_center1 = [int((left_results[1][0] + right_results[1][0]) / 2),
+                       int((left_results[1][1] + right_results[1][1]) / 2)]  # 下中的一個點
+        car_center2 = [int((left_results[0][0] + right_results[0][0]) / 2),
+                       int((left_results[0][1] + right_results[0][1]) / 2)]  # 上中一個點
+        car_center1[1] = min(car_center1[1], img.shape[0])  # 大於高度設定成高度
+        car_center2[1] = min(car_center2[1], img.shape[0])  # 大於高度設定成高度
+        #         print('car_center1:', car_center1)
+        #         print('car_center2:', car_center2)
         cv2.line(img, tuple(car_center1), tuple(car_center2), (0, 0, 255), 2)
 
-        view_center1 = (int(img.shape[1]/2), int(img.shape[0])) # 下中的一個點
-        view_center2 = (int(img.shape[1]/2), 0)                 # 上中一個點
+        view_center1 = (int(img.shape[1] / 2), int(img.shape[0]))  # 下中的一個點
+        view_center2 = (int(img.shape[1] / 2), 0)  # 上中一個點
 
-        cv2.line(img, view_center1, view_center2, (0, 0, 255), 2) # Camera中心線上下
-#         cv2.line(img, (0, int(img.shape[0]/2)), (int(img.shape[1]), int(img.shape[0]/2)) , (0, 255, 255), 2) # Camera中心線左右
+        cv2.line(img, view_center1, view_center2, (0, 0, 255), 2)  # Camera中心線上下
+        #         cv2.line(img, (0, int(img.shape[0]/2)), (int(img.shape[1]), int(img.shape[0]/2)) , (0, 255, 255), 2) # Camera中心線左右
 
-        car_center_point = [int((car_center1[0] + car_center2[0])/2), int((car_center1[1] + car_center2[1])/2)]
-        camera_center_point = [int(img.shape[1]/2), int(img.shape[0]/2)]
-        cv2.circle(img, tuple(car_center_point), 2, (0, 255, 255), -1) # 實際中心點
-        cv2.circle(img, tuple(camera_center_point), 2, (0, 255, 255), -1) # Camera中心點
+        car_center_point = [int((car_center1[0] + car_center2[0]) / 2), int((car_center1[1] + car_center2[1]) / 2)]
+        camera_center_point = [int(img.shape[1] / 2), int(img.shape[0] / 2)]
+        cv2.circle(img, tuple(car_center_point), 2, (0, 255, 255), -1)  # 實際中心點
+        cv2.circle(img, tuple(camera_center_point), 2, (0, 255, 255), -1)  # Camera中心點
 
         distance_x = car_center_point[0] - camera_center_point[0]
-        cv2.putText(img, 'DST: {}'.format(distance_x), (10, 200), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 255), 1, cv2.LINE_AA)
+        cv2.putText(img, 'DST: {}'.format(distance_x), (10, 200), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 255), 1,
+                    cv2.LINE_AA)
 
-#         cos = cosine_similarity([list(car_center1) + list(car_center2)], [list(view_center1) + list(view_center2)]).squeeze()
-#         cv2.putText(img, '{:.2f}'.format(cos), (10, 300), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 255), 1, cv2.LINE_AA)
-        
+    #         cos = cosine_similarity([list(car_center1) + list(car_center2)], [list(view_center1) + list(view_center2)]).squeeze()
+    #         cv2.putText(img, '{:.2f}'.format(cos), (10, 300), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 255), 1, cv2.LINE_AA)
+
     # 注意這裡點的順序
-#     print(left_results)
-#     print(right_results)
+    #     print(left_results)
+    #     print(right_results)
 
     vtxs = np.array([[left_results[0], right_results[0], left_results[1], right_results[1]]])
-#     print("-------------------")
+    #     print("-------------------")
 
     # d. 填充車道區域
-#     cv2.fillPoly(img, vtxs, (100, 200, 100))
+    #     cv2.fillPoly(img, vtxs, (100, 200, 100))
     return img, distance_x
-    
+
+
 def clean_lines(lines, threshold):
     # 迭代計算斜率均值，排除掉與差值差異較大的數據
     slope = [(y2 - y1) / (x2 - x1) for line in lines for x1, y1, x2, y2 in line]
@@ -102,6 +107,7 @@ def clean_lines(lines, threshold):
             lines.pop(idx)
         else:
             break
+
 
 def least_squares_fit(point_list, ymin, ymax):
     # 最小二乘法擬合
@@ -116,30 +122,41 @@ def least_squares_fit(point_list, ymin, ymax):
     xmax = int(fit_fn(ymax))
     return [[xmin, ymin], [xmax, ymax]]
 
-def gstreamer_pipeline(capture_width=640, capture_height=480, display_width=640, display_height=480, framerate=30, flip_method=0):
+
+def gstreamer_pipeline(capture_width=640, capture_height=480, display_width=640, display_height=480, framerate=30,
+                       flip_method=0):
+    # return ('nvarguscamerasrc ! '
+    #         'video/x-raw(momory:NVMM), '
+    #         'width=(int)%d, height=(int)%d, '
+    #         'format=(string)NV12, framerate=(fraction)%d/1 ! '
+    #         'nvvidconv flip-method=%d ! '
+    #         'video/x-raw, width=(int)%d, height=(int)%d, format=(string)BGRx ! '
+    #         'videoconvert ! '
+    #         'video/x-raw, format=(string)BGR ! appsink' % (capture_width, capture_height, framerate, flip_method, display_width, display_height))
     return ('nvarguscamerasrc ! '
-            'video/x-raw(momory:NVMM), '
-            'width=(int)%d, height=(int)%d, '
+            'video/x-raw(memory:NVMM), '
+            'width=%d, height=%d, '
             'format=(string)NV12, framerate=(fraction)%d/1 ! '
-            'nvvidconv flip-method=%d ! '
+            'nvvidconv ! '
             'video/x-raw, width=(int)%d, height=(int)%d, format=(string)BGRx ! '
             'videoconvert ! '
-            'video/x-raw, format=(string)BGR ! appsink' % (capture_width, capture_height, framerate, flip_method, display_width, display_height))
+            'appsink' % (capture_width, capture_height, framerate, display_width, display_height))
+
 
 if __name__ == '__main__':
     parser = ArgumentParser()
-    parser.add_argument("-j",       "--jupyter",        default=False,      type=bool)
-    parser.add_argument("-w",       "--write_video",    default=None,       type=str)
+    parser.add_argument("-j", "--jupyter", default=False, type=bool)
+    parser.add_argument("-w", "--write_video", default=None, type=str)
 
-    parser.add_argument("-rt",       "--runtime",       default=5,          type=int)
-    parser.add_argument("-c",       "--camera",         default=0,          type=int)
-    parser.add_argument("-disca",   "--display_camera", default=False,      type=bool)
+    parser.add_argument("-rt", "--runtime", default=3, type=int)
+    parser.add_argument("-c", "--camera", default=0, type=int)
+    parser.add_argument("-disca", "--display_camera", default=True, type=bool)
 
-    parser.add_argument("-d",       "--draw_lines",     default=True,       type=bool)
-    parser.add_argument("-f",       "--draw_fps",       default=True,       type=bool)
+    parser.add_argument("-d", "--draw_lines", default=True, type=bool)
+    parser.add_argument("-f", "--draw_fps", default=True, type=bool)
 
-    parser.add_argument("-ctl",     "--controller",     default=True,       type=bool)
-    parser.add_argument("-fwd",     "--forward",        default=5.0,        type=float)
+    parser.add_argument("-ctl", "--controller", default=True, type=bool)
+    parser.add_argument("-fwd", "--forward", default=5.0, type=float)
 
     args = parser.parse_args()
 
@@ -151,18 +168,21 @@ if __name__ == '__main__':
         imgbox = widgets.Image(format='jpg')
         display.display(imgbox)
 
-    # if args.controller:
-    #     from jetbot import Robot
-    #     robot = Robot()
+    if args.controller:
+        from jetbot import Robot
 
-    cap = cv2.VideoCapture(gstreamer_pipeline(flip_method=0, framerate=30), cv2.CAP_GSTREAMER)
+        robot = Robot()
+
+    cap = cv2.VideoCapture('../demo.avi')
+    # cap = cv2.VideoCapture(args.camera)
+    # cap = cv2.VideoCapture(gstreamer_pipeline(flip_method=0, framerate=30), cv2.CAP_GSTREAMER)
     # cap = cv2.VideoCapture(0)
 
     if args.write_video:
         out = cv2.VideoWriter(args.write_video, cv2.VideoWriter_fourcc(*'MJPG'), 25.0, (640, 480))
 
     start = time.time()
-    while(True):
+    while (True):
         ret, frame = cap.read()
         # print('frame.shape:', frame.shape)
         if ret:
@@ -191,7 +211,8 @@ if __name__ == '__main__':
                         end = time.time()
                         # 計算FPS
                         fps = 1 / (end - start)
-                        cv2.putText(frame, 'FPS: {:.0f}'.format(fps), (10, 250), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 255), 1,
+                        cv2.putText(frame, 'FPS: {:.0f}'.format(fps), (10, 250), cv2.FONT_HERSHEY_TRIPLEX, 1,
+                                    (0, 255, 255), 1,
                                     cv2.LINE_AA)
                         # print("\rFPS: {:.0f}".format(fps), end='')
 
@@ -201,8 +222,8 @@ if __name__ == '__main__':
                         cv2.imshow('frame', frame)
 
                 # 控制方向
-                # if args.controller:
-                #     robot.forward(args.forward)
+                if args.controller:
+                    robot.forward(args.forward)
 
             except:
                 # print("ee")
@@ -212,12 +233,12 @@ if __name__ == '__main__':
                 out.write(frame)
             if cv2.waitKey(1) & 0xFF == ord('q') or cv2.waitKey(1) & 0xFF == 27:
                 break
-            if args.runtime != -1 and time.time()-start >= args.runtime:
+            if args.runtime != -1 and time.time() - start >= args.runtime:
                 break
         else:
             break
 
-    # robot.stop()
+    robot.stop()
     cap.release()
     if args.write_video:
         out.release()
