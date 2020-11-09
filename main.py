@@ -155,10 +155,9 @@ def gstreamer_pipeline(capture_width=640, capture_height=480, display_width=640,
 
 if __name__ == '__main__':
     parser = ArgumentParser()
-    parser.add_argument("-j", "--jupyter", default=False, type=bool)
     parser.add_argument("-w", "--write_video", default=None, type=str)
 
-    parser.add_argument("-rt", "--runtime", default=10, type=int)
+    parser.add_argument("-rt", "--runtime", default=-1, type=int)
     parser.add_argument("-c", "--camera", default=0, type=int)
     parser.add_argument("-disca", "--display_camera", default=True, type=bool)
 
@@ -169,14 +168,6 @@ if __name__ == '__main__':
     parser.add_argument("-fwd", "--forward", default=0.5, type=float)
 
     args = parser.parse_args()
-
-    if args.jupyter:
-        import ipywidgets as widgets
-        from IPython import display
-        import matplotlib.pyplot as plt
-
-        imgbox = widgets.Image(format='jpg')
-        display.display(imgbox)
 
     if args.controller:
         from jetbot import Robot
@@ -257,11 +248,7 @@ if __name__ == '__main__':
                                 1,
                                 cv2.LINE_AA)
                     # print("\rFPS: {:.0f}".format(fps), end='')
-
-                if args.jupyter:
-                    imgbox.value = cv2.imencode('.jpg', frame)[1].tobytes()
-                else:
-                    cv2.imshow('frame', frame)
+                cv2.imshow('frame', frame)
 
             if args.write_video:
                 out.write(frame)
