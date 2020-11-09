@@ -7,9 +7,10 @@ import time
 # from sklearn.metrics.pairwise import cosine_similarity
 from argparse import ArgumentParser
 import traceback
+from PID import PID
 
 def draw_lanes(img, lines):
-    distance_x = 0
+    distance_x = None
     # a. 劃分左右車道
     left_lines, right_lines = [], []
 
@@ -164,14 +165,10 @@ if __name__ == '__main__':
     parser.add_argument("-d", "--draw_lines", default=True, type=bool)
     parser.add_argument("-f", "--draw_fps", default=True, type=bool)
 
-    parser.add_argument("-ctl", "--controller", default=False, type=bool)
+    parser.add_argument("-ctl", "--controller", default=True, type=bool)
     parser.add_argument("-fwd", "--forward", default=0.5, type=float)
 
     args = parser.parse_args()
-
-    if args.controller:
-        from jetbot import Robot
-        robot = Robot()
 
     cap = cv2.VideoCapture('../demo.avi')
     # cap = cv2.VideoCapture(args.camera)
@@ -183,7 +180,14 @@ if __name__ == '__main__':
 
     # 控制方向
     if args.controller:
-        robot.forward(args.forward)
+        # from jetbot import Robot
+        # robot = Robot()
+        # robot.forward(args.forward)
+
+        # 100像素點當最大值
+        pid = PID(0.2, 0.5, 0)
+        left_default = 0.5
+        right_default = 0.5
 
     sys_start = time.time()
     while(True):
@@ -205,7 +209,6 @@ if __name__ == '__main__':
             _, th1 = cv2.cuda.threshold(openIt, 180, 225, cv2.THRESH_TOZERO)
             # canny = cv2.cuda.createCannyEdgeDetector(0, 100).detect(openIt)
 
-
             # lines = cv2.cuda.createHoughSegmentDetector(1.0, np.pi / 180.0, 150, 5).detect(th1).download()
             # if lines is not None:
             #     # print(lines.shape)
@@ -224,6 +227,7 @@ if __name__ == '__main__':
 
             th1 = th1.download()
             lines = cv2.HoughLinesP(th1, 1, np.pi / 180, 150, 5)
+            distance_x = None
             if lines is not None:
                 # print(lines.shape)
                 # try:
@@ -238,6 +242,25 @@ if __name__ == '__main__':
                 #     traceback.print_exc()
                 #     pass
                 distance_x = draw_lanes(frame, lines)
+            if distance_x is not None:
+                output = pid.update(distance_x)
+                turning = output / 100.0
+                # print('output:', output)
+                cv2.putText(frame, 'PID: {:.0f}'.format(output), (10, 300), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 255),
+                            1,
+                            cv2.LINE_AA)
+                cv2.putText(frame, 'Turning: {:.3f}'.format(turning), (10, 350), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 255),
+                            1,
+                            cv2.LINE_AA)
+                cv2.putText(frame, 'Left: {:.3f}'.format(left_default - turning / 2), (10, 400), cv2.FONT_HERSHEY_TRIPLEX, 1,
+                            (0, 255, 255),
+                            1,
+                            cv2.LINE_AA)
+                cv2.putText(frame, 'Right: {:.3f}'.format(right_default + turning / 2), (10, 450),
+                            cv2.FONT_HERSHEY_TRIPLEX, 1,
+                            (0, 255, 255),
+                            1,
+                            cv2.LINE_AA)
 
             if args.display_camera:
                 if args.draw_fps:
@@ -259,8 +282,8 @@ if __name__ == '__main__':
         else:
             break
 
-    if args.controller:
-        robot.stop()
+    # if args.controller:
+    #     robot.stop()
     cap.release()
     if args.write_video:
         out.release()

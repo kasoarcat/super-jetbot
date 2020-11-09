@@ -36,7 +36,6 @@ class PID:
     """
 
     def __init__(self, P=0.2, I=0.0, D=0.0):
-
         self.Kp = P
         self.Ki = I
         self.Kd = D
@@ -94,6 +93,7 @@ class PID:
             self.last_error = error
 
             self.output = self.PTerm + (self.Ki * self.ITerm) + (self.Kd * self.DTerm)
+            return self.output
 
     def setKp(self, proportional_gain):
         """Determines how aggressively the PID reacts to the current error with setting Proportional Gain"""
