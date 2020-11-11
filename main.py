@@ -7,6 +7,7 @@ import time
 # from sklearn.metrics.pairwise import cosine_similarity
 from argparse import ArgumentParser
 import traceback
+import nanocamera as nano
 from PID import PID
 
 def draw_lanes(img, lines):
@@ -174,6 +175,7 @@ if __name__ == '__main__':
     # cap = cv2.VideoCapture(args.camera)
     # cap = cv2.VideoCapture(gstreamer_pipeline(flip_method=0, framerate=30), cv2.CAP_GSTREAMER)
     # cap = cv2.VideoCapture(0)
+    # camera = nano.Camera(camera_type=1, device_id=0, flip=0, width=640, height=480, fps=30)
 
     if args.write_video:
         out = cv2.VideoWriter(args.write_video, cv2.VideoWriter_fourcc(*'MJPG'), 25.0, (640, 480))
@@ -192,9 +194,12 @@ if __name__ == '__main__':
     sys_start = time.time()
     while(True):
         start = time.time()
+
         ret, frame = cap.read()
-        # print('frame.shape:', frame.shape)
         if ret:
+        # if camera.isReady():
+        #     frame = camera.read()
+
             # gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
             # f1 = cv2.bilateralFilter(gray, 9, 75, 75)  # 去噪音(模糊)
             # erosion = cv2.erode(f1, np.ones((2, 2), np.uint8), iterations=1)
@@ -249,7 +254,7 @@ if __name__ == '__main__':
                 cv2.putText(frame, 'PID: {:.0f}'.format(output), (10, 300), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 255),
                             1,
                             cv2.LINE_AA)
-                cv2.putText(frame, 'Turning: {:.3f}'.format(turning), (10, 350), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 255),
+                cv2.putText(frame, 'Turn: {:.3f}'.format(turning), (10, 350), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 255),
                             1,
                             cv2.LINE_AA)
                 cv2.putText(frame, 'Left: {:.3f}'.format(left_default - turning / 2), (10, 400), cv2.FONT_HERSHEY_TRIPLEX, 1,
