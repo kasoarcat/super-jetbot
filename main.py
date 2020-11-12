@@ -75,24 +75,24 @@ def draw_lanes(img, lines):
         car_center2[1] = min(car_center2[1], img.shape[0])  # 大於高度設定成高度
 #         print('car_center1:', car_center1)
 #         print('car_center2:', car_center2)
-        cv2.line(img, tuple(car_center1), tuple(car_center2), (0, 0, 255), 2)
+#         cv2.line(img, tuple(car_center1), tuple(car_center2), (0, 0, 255), 2)
 
         view_center1 = (int(img.shape[1] / 2), int(img.shape[0]))  # 下中的一個點
         view_center2 = (int(img.shape[1] / 2), 0)  # 上中一個點
 
-        cv2.line(img, view_center1, view_center2, (0, 0, 255), 2)  # Camera中心線上下
+        # cv2.line(img, view_center1, view_center2, (0, 0, 255), 2)  # Camera中心線上下
 #         cv2.line(img, (0, int(img.shape[0]/2)), (int(img.shape[1]), int(img.shape[0]/2)) , (0, 255, 255), 2) # Camera中心線左右
 
         car_center_point = [int((car_center1[0] + car_center2[0]) / 2), int((car_center1[1] + car_center2[1]) / 2)]
         camera_center_point = [int(img.shape[1] / 2), int(img.shape[0] / 2)]
-        cv2.circle(img, tuple(car_center_point), 2, (0, 255, 255), -1)  # 實際中心點
-        cv2.circle(img, tuple(camera_center_point), 2, (0, 255, 255), -1)  # Camera中心點
+        # cv2.circle(img, tuple(car_center_point), 2, (0, 255, 255), -1)  # 實際中心點
+        # cv2.circle(img, tuple(camera_center_point), 2, (0, 255, 255), -1)  # Camera中心點
 
         distance_x = car_center_point[0] - camera_center_point[0]
-        cv2.putText(img, 'DST: {}'.format(distance_x), (10, 200), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 255), 1,
-                    cv2.LINE_AA)
-#         cos = cosine_similarity([list(car_center1) + list(car_center2)], [list(view_center1) + list(view_center2)]).squeeze()
-#         cv2.putText(img, '{:.2f}'.format(cos), (10, 300), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 255), 1, cv2.LINE_AA)
+#         cv2.putText(img, 'DST: {}'.format(distance_x), (10, 200), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 255), 1,
+#                     cv2.LINE_AA)
+# #         cos = cosine_similarity([list(car_center1) + list(car_center2)], [list(view_center1) + list(view_center2)]).squeeze()
+# #         cv2.putText(img, '{:.2f}'.format(cos), (10, 300), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 255), 1, cv2.LINE_AA)
 
     # 注意這裡點的順序
     #     print(left_results)
@@ -171,25 +171,29 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    cap = cv2.VideoCapture('../demo.avi')
+    # cap = cv2.VideoCapture('../demo.avi')
     # cap = cv2.VideoCapture(args.camera)
-    # cap = cv2.VideoCapture(gstreamer_pipeline(flip_method=0, framerate=30), cv2.CAP_GSTREAMER)
+    cap = cv2.VideoCapture(gstreamer_pipeline(capture_width=640, capture_height=480, flip_method=0, framerate=7), cv2.CAP_GSTREAMER)
+
     # cap = cv2.VideoCapture(0)
-    # camera = nano.Camera(camera_type=1, device_id=0, flip=0, width=640, height=480, fps=30)
+    # cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+    # cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+    # cap.set(cv2.CAP_PROP_FPS, 20)
+
+    # camera = nano.Camera(camera_type=2, device_id=0, flip=0, width=640, height=480, fps=5)
 
     if args.write_video:
         out = cv2.VideoWriter(args.write_video, cv2.VideoWriter_fourcc(*'MJPG'), 25.0, (640, 480))
 
     # 控制方向
     if args.controller:
-        # from jetbot import Robot
-        # robot = Robot()
-        # robot.forward(args.forward)
+        from jetbot import Robot
+        robot = Robot()
 
         # 100像素點當最大值
-        pid = PID(0.2, 0.5, 0)
-        left_default = 0.5
-        right_default = 0.5
+        pid = PID(0.02, 0.01, 0.0001)
+        left_default, right_default = 0.32, 0.32
+        robot.set_motors(left_default, right_default)
 
     sys_start = time.time()
     while(True):
@@ -249,34 +253,30 @@ if __name__ == '__main__':
                 distance_x = draw_lanes(frame, lines)
             if distance_x is not None:
                 output = pid.update(distance_x)
-                turning = output / 100.0
+                turn = output / 100.0
+                value_left = left_default - turn / 2.0
+                value_right = right_default + turn / 2.0
                 # print('output:', output)
-                cv2.putText(frame, 'PID: {:.0f}'.format(output), (10, 300), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 255),
-                            1,
-                            cv2.LINE_AA)
-                cv2.putText(frame, 'Turn: {:.3f}'.format(turning), (10, 350), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 255),
-                            1,
-                            cv2.LINE_AA)
-                cv2.putText(frame, 'Left: {:.3f}'.format(left_default - turning / 2), (10, 400), cv2.FONT_HERSHEY_TRIPLEX, 1,
-                            (0, 255, 255),
-                            1,
-                            cv2.LINE_AA)
-                cv2.putText(frame, 'Right: {:.3f}'.format(right_default + turning / 2), (10, 450),
-                            cv2.FONT_HERSHEY_TRIPLEX, 1,
-                            (0, 255, 255),
-                            1,
-                            cv2.LINE_AA)
+                # cv2.putText(frame, 'PID: {:.0f}'.format(output), (10, 300), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 255),
+                #             1, cv2.LINE_AA)
+                # cv2.putText(frame, 'Turn: {:.3f}'.format(turn), (10, 350), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 255),
+                #             1, cv2.LINE_AA)
+                # cv2.putText(frame, 'Left: {:.3f}'.format(value_left), (10, 400), cv2.FONT_HERSHEY_TRIPLEX, 1,
+                #             (0, 255, 255), 1, cv2.LINE_AA)
+                # cv2.putText(frame, 'Right: {:.3f}'.format(value_right), (10, 450), cv2.FONT_HERSHEY_TRIPLEX, 1,
+                #             (0, 255, 255), 1, cv2.LINE_AA)
+                robot.set_motors(value_left, value_right)
 
             if args.display_camera:
                 if args.draw_fps:
                     end = time.time()
                     # 計算FPS
                     fps = 1 / (end - start)
-                    cv2.putText(frame, 'FPS: {:.0f}'.format(fps), (10, 250), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 255),
-                                1,
-                                cv2.LINE_AA)
-                    # print("\rFPS: {:.0f}".format(fps), end='')
-                cv2.imshow('frame', frame)
+                    # cv2.putText(frame, 'FPS: {:.0f}'.format(fps), (10, 250), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 255),
+                    #             1,
+                    #             cv2.LINE_AA)
+                    print("\rFPS: {:.0f}".format(fps), end='\n')
+                # cv2.imshow('frame', frame)
 
             if args.write_video:
                 out.write(frame)
@@ -287,8 +287,9 @@ if __name__ == '__main__':
         else:
             break
 
-    # if args.controller:
-    #     robot.stop()
+    if args.controller:
+        robot.stop()
     cap.release()
+    # camera.release()
     if args.write_video:
         out.release()
