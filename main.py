@@ -9,6 +9,9 @@ from argparse import ArgumentParser
 import traceback
 import nanocamera as nano
 from PID import PID
+# import select
+# import v4l2capture
+from jetbot import Camera
 
 def draw_lanes(img, lines):
     distance_x = None
@@ -75,13 +78,13 @@ def draw_lanes(img, lines):
         car_center2[1] = min(car_center2[1], img.shape[0])  # 大於高度設定成高度
 #         print('car_center1:', car_center1)
 #         print('car_center2:', car_center2)
-#         cv2.line(img, tuple(car_center1), tuple(car_center2), (0, 0, 255), 2)
+        cv2.line(img, tuple(car_center1), tuple(car_center2), (0, 0, 255), 2) # 實際中心線
 
         view_center1 = (int(img.shape[1] / 2), int(img.shape[0]))  # 下中的一個點
         view_center2 = (int(img.shape[1] / 2), 0)  # 上中一個點
 
-        # cv2.line(img, view_center1, view_center2, (0, 0, 255), 2)  # Camera中心線上下
-#         cv2.line(img, (0, int(img.shape[0]/2)), (int(img.shape[1]), int(img.shape[0]/2)) , (0, 255, 255), 2) # Camera中心線左右
+        cv2.line(img, view_center1, view_center2, (0, 0, 255), 2)  # Camera中心線上下
+        # cv2.line(img, (0, int(img.shape[0]/2)), (int(img.shape[1]), int(img.shape[0]/2)) , (0, 255, 255), 2) # Camera中心線左右
 
         car_center_point = [int((car_center1[0] + car_center2[0]) / 2), int((car_center1[1] + car_center2[1]) / 2)]
         camera_center_point = [int(img.shape[1] / 2), int(img.shape[0] / 2)]
@@ -152,13 +155,16 @@ def gstreamer_pipeline(capture_width=640, capture_height=480, display_width=640,
             'nvvidconv ! '
             'video/x-raw, width=(int)%d, height=(int)%d, format=(string)BGRx ! '
             'videoconvert ! '
+            'queue max-size-buffers=1 max-size-bytes=1 max-size-time=1 ! '
+            'queue max-size-time=1 min-threshold-time=1 ! '
             'appsink' % (capture_width, capture_height, framerate, display_width, display_height))
 
 
 if __name__ == '__main__':
     parser = ArgumentParser()
-    parser.add_argument("-w", "--write_video", default=None, type=str)
+    parser.add_argument("-w", "--write_video", default='result.avi', type=str)
 
+    parser.add_argument("-dt", "--delay_time", default=5, type=int)
     parser.add_argument("-rt", "--runtime", default=-1, type=int)
     parser.add_argument("-c", "--camera", default=0, type=int)
     parser.add_argument("-disca", "--display_camera", default=True, type=bool)
@@ -173,17 +179,33 @@ if __name__ == '__main__':
 
     # cap = cv2.VideoCapture('../demo.avi')
     # cap = cv2.VideoCapture(args.camera)
-    cap = cv2.VideoCapture(gstreamer_pipeline(capture_width=640, capture_height=480, flip_method=0, framerate=7), cv2.CAP_GSTREAMER)
+    # cap = cv2.VideoCapture(gstreamer_pipeline(capture_width=320, capture_height=240, flip_method=0, framerate=5), cv2.CAP_GSTREAMER)
+
+    # video = v4l2capture.Video_device("/dev/video0")
+    # size_x, size_y = video.set_format(640, 480, fourcc='MJPG')
+    # print("device chose {0}x{1} res".format(size_x, size_y))
+    # # Create a buffer to store image data in. This must be done before
+    # # calling 'start' if v4l2capture is compiled with libv4l2. Otherwise
+    # # raises IOError.
+    # video.create_buffers(30)
+    # # Send the buffer to the device. Some devices require this to be done
+    # # before calling 'start'.
+    # video.queue_all_buffers()
+    # video.start()
+    # # The rest is easy :-)
+    # image_data = video.read_and_queue()
+    # frame = cv2.imdecode(np.frombuffer(image_data, dtype=np.uint8), cv2.cv.CV_LOAD_IMAGE_COLOR)
 
     # cap = cv2.VideoCapture(0)
-    # cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-    # cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+    # cap.set(cv2.CAP_PROP_FRAME_WIDTH, 320)
+    # cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 240)
     # cap.set(cv2.CAP_PROP_FPS, 20)
 
-    # camera = nano.Camera(camera_type=2, device_id=0, flip=0, width=640, height=480, fps=5)
+    camera = Camera.instance()
+    # camera = nano.Camera(camera_type=2, device_id=0, flip=0, width=640, height=480, fps=30)
 
     if args.write_video:
-        out = cv2.VideoWriter(args.write_video, cv2.VideoWriter_fourcc(*'MJPG'), 25.0, (640, 480))
+        out = cv2.VideoWriter(args.write_video, cv2.VideoWriter_fourcc(*'MJPG'), 21.0, (640, 480))
 
     # 控制方向
     if args.controller:
@@ -192,17 +214,25 @@ if __name__ == '__main__':
 
         # 100像素點當最大值
         pid = PID(0.02, 0.01, 0.0001)
+        # pid = PID(0.02, 0.01, 0.0001)
         left_default, right_default = 0.32, 0.32
-        robot.set_motors(left_default, right_default)
+        # robot.set_motors(left_default, right_default)
 
     sys_start = time.time()
     while(True):
         start = time.time()
 
-        ret, frame = cap.read()
-        if ret:
+        # ret, frame = cap.read()
+        # if ret:
         # if camera.isReady():
         #     frame = camera.read()
+
+        if True:
+            # # Wait for the device to fill the buffer.
+            # select.select((video,), (), ())
+            # image_data = video.read_and_queue()
+            # frame = cv2.imdecode(np.frombuffer(image_data, dtype=np.uint8), cv2.cv.CV_LOAD_IMAGE_COLOR)
+            frame = camera.value
 
             # gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
             # f1 = cv2.bilateralFilter(gray, 9, 75, 75)  # 去噪音(模糊)
@@ -256,26 +286,27 @@ if __name__ == '__main__':
                 turn = output / 100.0
                 value_left = left_default - turn / 2.0
                 value_right = right_default + turn / 2.0
-                # print('output:', output)
-                # cv2.putText(frame, 'PID: {:.0f}'.format(output), (10, 300), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 255),
-                #             1, cv2.LINE_AA)
-                # cv2.putText(frame, 'Turn: {:.3f}'.format(turn), (10, 350), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 255),
-                #             1, cv2.LINE_AA)
-                # cv2.putText(frame, 'Left: {:.3f}'.format(value_left), (10, 400), cv2.FONT_HERSHEY_TRIPLEX, 1,
-                #             (0, 255, 255), 1, cv2.LINE_AA)
-                # cv2.putText(frame, 'Right: {:.3f}'.format(value_right), (10, 450), cv2.FONT_HERSHEY_TRIPLEX, 1,
-                #             (0, 255, 255), 1, cv2.LINE_AA)
-                robot.set_motors(value_left, value_right)
+                # print('turn:', turn, 'value_left:', value_left, 'value_right:', value_right)
+                cv2.putText(frame, 'OUT: {:.0f}'.format(output), (10, 300), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 255),
+                            1, cv2.LINE_AA)
+                cv2.putText(frame, 'Turn: {:.3f}'.format(turn), (10, 350), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 255),
+                            1, cv2.LINE_AA)
+                cv2.putText(frame, 'Left: {:.3f}'.format(value_left), (10, 400), cv2.FONT_HERSHEY_TRIPLEX, 1,
+                            (0, 255, 255), 1, cv2.LINE_AA)
+                cv2.putText(frame, 'Right: {:.3f}'.format(value_right), (10, 450), cv2.FONT_HERSHEY_TRIPLEX, 1,
+                            (0, 255, 255), 1, cv2.LINE_AA)
+
+                if time.time() - sys_start > args.delay_time:
+                    robot.set_motors(value_left, value_right)
 
             if args.display_camera:
                 if args.draw_fps:
                     end = time.time()
                     # 計算FPS
                     fps = 1 / (end - start)
-                    # cv2.putText(frame, 'FPS: {:.0f}'.format(fps), (10, 250), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 255),
-                    #             1,
-                    #             cv2.LINE_AA)
-                    print("\rFPS: {:.0f}".format(fps), end='\n')
+                    cv2.putText(frame, 'FPS: {:.0f}'.format(fps), (10, 250), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 255),
+                                1, cv2.LINE_AA)
+                    # print("\rFPS: {:.0f}".format(fps), end='\n')
                 # cv2.imshow('frame', frame)
 
             if args.write_video:
@@ -289,7 +320,8 @@ if __name__ == '__main__':
 
     if args.controller:
         robot.stop()
-    cap.release()
+    # cap.release()
     # camera.release()
+    camera.stop()
     if args.write_video:
         out.release()
