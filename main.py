@@ -11,7 +11,7 @@ import nanocamera as nano
 from PID import PID
 # import select
 # import v4l2capture
-from jetbot import Camera
+from camera import Camera
 
 def draw_lanes(img, lines):
     distance_x = None
@@ -164,7 +164,7 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument("-w", "--write_video", default='result.avi', type=str)
 
-    parser.add_argument("-dt", "--delay_time", default=5, type=int)
+    parser.add_argument("-dt", "--delay_time", default=0, type=int)
     parser.add_argument("-rt", "--runtime", default=-1, type=int)
     parser.add_argument("-c", "--camera", default=0, type=int)
     parser.add_argument("-disca", "--display_camera", default=True, type=bool)
@@ -201,7 +201,8 @@ if __name__ == '__main__':
     # cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 240)
     # cap.set(cv2.CAP_PROP_FPS, 20)
 
-    camera = Camera.instance()
+    camera = Camera()
+    # camera = Camera.instance()
     # camera = nano.Camera(camera_type=2, device_id=0, flip=0, width=640, height=480, fps=30)
 
     if args.write_video:
@@ -296,8 +297,8 @@ if __name__ == '__main__':
                 cv2.putText(frame, 'Right: {:.3f}'.format(value_right), (10, 450), cv2.FONT_HERSHEY_TRIPLEX, 1,
                             (0, 255, 255), 1, cv2.LINE_AA)
 
-                if time.time() - sys_start > args.delay_time:
-                    robot.set_motors(value_left, value_right)
+                # if time.time() - sys_start > args.delay_time:
+                robot.set_motors(value_left, value_right)
 
             if args.display_camera:
                 if args.draw_fps:
