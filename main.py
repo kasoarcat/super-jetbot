@@ -34,7 +34,7 @@ def draw_lanes(img, lines):
 
     # print('left_lines:', len(left_lines), 'right_lines:', len(right_lines))
     if (len(left_lines) <= 0 or len(right_lines) <= 0):
-        print('沒有數值')
+        # print('沒有數值')
         if len(left_lines) > 0:
             return distance_x, True # 向右轉
         else:
@@ -220,8 +220,8 @@ if __name__ == '__main__':
         # 100像素點當最大值
         pid = PID(0.1, 0.01, 0.00015)
         # pid = PID(0.02, 0.01, 0.00015)
-        # left_default, right_default = 0.32, 0.32
-        left_default, right_default = 0.34, 0.34
+        # left_default, right_default = 0.34, 0.34
+        left_default, right_default = 0.35, 0.35
         # robot.set_motors(left_default, right_default)
         # time.sleep(0.1)
         # left_default, right_default = 0.28, 0.28
@@ -350,7 +350,7 @@ if __name__ == '__main__':
                     cv2.putText(frame, 'FPS: {:.0f}'.format(fps), (10, 250), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 255),
                                 1, cv2.LINE_AA)
                     # print("\rFPS: {:.0f}".format(fps), end='\n')
-                cv2.imshow('frame', frame)
+                # cv2.imshow('frame', frame)
 
             if args.write_video:
                 out.write(frame)
