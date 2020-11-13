@@ -16,11 +16,11 @@ class Camera(SingletonConfigurable):
     # fps = traitlets.Integer(default_value=21).tag(config=True)
     # capture_width = traitlets.Integer(default_value=3280).tag(config=True)
     # capture_height = traitlets.Integer(default_value=2464).tag(config=True)
-    width = traitlets.Integer(default_value=1280).tag(config=True)
-    height = traitlets.Integer(default_value=960).tag(config=True)
-    fps = traitlets.Integer(default_value=21).tag(config=True)
-    capture_width = traitlets.Integer(default_value=3280).tag(config=True)
-    capture_height = traitlets.Integer(default_value=2464).tag(config=True)
+    width = traitlets.Integer(default_value=320).tag(config=True)
+    height = traitlets.Integer(default_value=480).tag(config=True)
+    fps = traitlets.Integer(default_value=10).tag(config=True)
+    capture_width = traitlets.Integer(default_value=1280).tag(config=True)
+    capture_height = traitlets.Integer(default_value=720).tag(config=True)
     
     def __init__(self, *args, **kwargs):
         self.value = np.empty((self.height, self.width, 3), dtype=np.uint8)

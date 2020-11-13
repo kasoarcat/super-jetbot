@@ -34,8 +34,11 @@ def draw_lanes(img, lines):
 
     # print('left_lines:', len(left_lines), 'right_lines:', len(right_lines))
     if (len(left_lines) <= 0 or len(right_lines) <= 0):
-        # print('沒有數值')
-        return distance_x
+        print('沒有數值')
+        if len(left_lines) > 0:
+            return distance_x, True # 向右轉
+        else:
+            return distance_x, False # 向左轉
 
     # b. 清理異常數據，迭代計算斜率均值，排除掉與差值差異較大的數據
     clean_lines(left_lines, 0.1)
@@ -105,7 +108,7 @@ def draw_lanes(img, lines):
     # #     print("-------------------")
     # # d. 填充車道區域
     # #     cv2.fillPoly(img, vtxs, (100, 200, 100))
-    return distance_x
+    return distance_x, True
 
 
 def clean_lines(lines, threshold):
@@ -135,6 +138,7 @@ def least_squares_fit(point_list, ymin, ymax):
 
     xmin = int(fit_fn(ymin))
     xmax = int(fit_fn(ymax))
+    # print(xmin, ymin, xmax, ymax)
     return [[xmin, ymin], [xmax, ymax]]
 
 
@@ -206,7 +210,7 @@ if __name__ == '__main__':
     # camera = nano.Camera(camera_type=2, device_id=0, flip=0, width=640, height=480, fps=30)
 
     if args.write_video:
-        out = cv2.VideoWriter(args.write_video, cv2.VideoWriter_fourcc(*'MJPG'), 5.0, (640, 480))
+        out = cv2.VideoWriter(args.write_video, cv2.VideoWriter_fourcc(*'MJPG'), 10.0, (320, 480))
 
     # 控制方向
     if args.controller:
@@ -214,16 +218,18 @@ if __name__ == '__main__':
         robot = Robot()
 
         # 100像素點當最大值
-        pid = PID(0.02, 0.01, 0.0001)
-        # pid = PID(0.02, 0.01, 0.0001)
-        left_default, right_default = 0.35, 0.32
-        robot.set_motors(left_default, right_default)
+        pid = PID(0.1, 0.01, 0.00015)
+        # pid = PID(0.02, 0.01, 0.00015)
+        # left_default, right_default = 0.32, 0.32
+        left_default, right_default = 0.34, 0.34
+        # robot.set_motors(left_default, right_default)
         # time.sleep(0.1)
         # left_default, right_default = 0.28, 0.28
 
     sys_start = time.time()
     value_left_pre = 0.0
     value_right_pre = 0.0
+    distance_x_pre = 0.0
 
     while(True):
         start = time.time()
@@ -286,9 +292,10 @@ if __name__ == '__main__':
                 except:
                     traceback.print_exc()
                     pass
-                distance_x = draw_lanes(frame, lines)
+                distance_x, direction = draw_lanes(frame, lines)
 
             if distance_x is not None:
+                distance_x_pre = distance_x
                 output = pid.update(distance_x)
                 turn = output / 100.0
                 value_left = left_default - turn / 2.0
@@ -296,8 +303,16 @@ if __name__ == '__main__':
                 value_left_pre = value_left
                 value_right_pre = value_right
 
+                ratio = -0.005 * abs(distance_x) + 1
+                value_left *= ratio
+                value_right *= ratio
+
                 # print('turn:', turn, 'value_left:', value_left, 'value_right:', value_right)
-                cv2.putText(frame, 'OUT: {:.0f}'.format(output), (10, 300), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 255),
+                cv2.putText(frame, 'RAT: {:.0f}'.format(ratio), (10, 100), cv2.FONT_HERSHEY_TRIPLEX, 1,
+                            (0, 255, 255), 1, cv2.LINE_AA)
+                cv2.putText(frame, 'DST: {:.0f}'.format(distance_x), (10, 150), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 255),
+                            1, cv2.LINE_AA)
+                cv2.putText(frame, 'OUT: {:.0f}'.format(output), (10, 200), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 255),
                             1, cv2.LINE_AA)
                 cv2.putText(frame, 'Turn: {:.3f}'.format(turn), (10, 350), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 255),
                             1, cv2.LINE_AA)
@@ -309,10 +324,22 @@ if __name__ == '__main__':
                 # if time.time() - sys_start > args.delay_time:
                 robot.set_motors(value_left, value_right)
             else:
-                robot.set_motors(value_right_pre, value_left_pre)
-                cv2.putText(frame, 'Left: {:.3f}'.format(value_left_pre), (10, 400), cv2.FONT_HERSHEY_TRIPLEX, 1,
+                # output = pid.update(distance_x_pre)
+
+                # cv2.putText(frame, 'Left: {:.3f}'.format(robot.right_motor.value), (10, 300), cv2.FONT_HERSHEY_TRIPLEX, 1,
+                #             (0, 255, 255), 1, cv2.LINE_AA)
+                # cv2.putText(frame, 'Right: {:.3f}'.format(robot.left_motor.value), (10, 350), cv2.FONT_HERSHEY_TRIPLEX, 1,
+                #             (0, 255, 255), 1, cv2.LINE_AA)
+
+                # robot.set_motors(value_right_pre * 0.5, value_left_pre * 0.5)
+                if direction: # 向右轉
+                    robot.set_motors(value_left_pre * 0.8, 0)
+                else: # 向左轉
+                    robot.set_motors(0, value_left_pre * 0.8)
+
+                cv2.putText(frame, 'Left: {:.3f}'.format(value_right_pre), (10, 400), cv2.FONT_HERSHEY_TRIPLEX, 1,
                             (0, 255, 255), 1, cv2.LINE_AA)
-                cv2.putText(frame, 'Right: {:.3f}'.format(value_right_pre), (10, 450), cv2.FONT_HERSHEY_TRIPLEX, 1,
+                cv2.putText(frame, 'Right: {:.3f}'.format(value_left_pre), (10, 450), cv2.FONT_HERSHEY_TRIPLEX, 1,
                             (0, 255, 255), 1, cv2.LINE_AA)
 
             if args.display_camera:
@@ -323,7 +350,7 @@ if __name__ == '__main__':
                     cv2.putText(frame, 'FPS: {:.0f}'.format(fps), (10, 250), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 255),
                                 1, cv2.LINE_AA)
                     # print("\rFPS: {:.0f}".format(fps), end='\n')
-                # cv2.imshow('frame', frame)
+                cv2.imshow('frame', frame)
 
             if args.write_video:
                 out.write(frame)
