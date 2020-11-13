@@ -64,8 +64,8 @@ def draw_lanes(img, lines):
     right_results = least_squares_fit(right_points, minY, img.shape[1])
 
     if args.draw_lines:
-        # cv2.line(img, (left_results[0][0], left_results[0][1]), (left_results[1][0], left_results[1][1]), (0, 0, 255), 2)      # 左線
-        # cv2.line(img, (right_results[0][0], right_results[0][1]), (right_results[1][0], right_results[1][1]), (0, 0, 255), 2)  # 右線
+        cv2.line(img, (left_results[0][0], left_results[0][1]), (left_results[1][0], left_results[1][1]), (0, 0, 255), 2)      # 左線
+        cv2.line(img, (right_results[0][0], right_results[0][1]), (right_results[1][0], right_results[1][1]), (0, 0, 255), 2)  # 右線
         # print('left_results:', left_results)
         # print('right_results:', right_results)
 
@@ -206,7 +206,7 @@ if __name__ == '__main__':
     # camera = nano.Camera(camera_type=2, device_id=0, flip=0, width=640, height=480, fps=30)
 
     if args.write_video:
-        out = cv2.VideoWriter(args.write_video, cv2.VideoWriter_fourcc(*'MJPG'), 21.0, (640, 480))
+        out = cv2.VideoWriter(args.write_video, cv2.VideoWriter_fourcc(*'MJPG'), 5.0, (640, 480))
 
     # 控制方向
     if args.controller:
@@ -216,10 +216,15 @@ if __name__ == '__main__':
         # 100像素點當最大值
         pid = PID(0.02, 0.01, 0.0001)
         # pid = PID(0.02, 0.01, 0.0001)
-        left_default, right_default = 0.32, 0.32
-        # robot.set_motors(left_default, right_default)
+        left_default, right_default = 0.35, 0.32
+        robot.set_motors(left_default, right_default)
+        # time.sleep(0.1)
+        # left_default, right_default = 0.28, 0.28
 
     sys_start = time.time()
+    value_left_pre = 0.0
+    value_right_pre = 0.0
+
     while(True):
         start = time.time()
 
@@ -247,7 +252,7 @@ if __name__ == '__main__':
             f1 = cv2.cuda.bilateralFilter(gray, 9, 75, 75)  # 去噪音(模糊)
             openIt = cv2.cuda.createMorphologyFilter(cv2.MORPH_OPEN, f1.type(), np.eye(2)).apply(f1)
             _, th1 = cv2.cuda.threshold(openIt, 180, 225, cv2.THRESH_TOZERO)
-            # canny = cv2.cuda.createCannyEdgeDetector(0, 100).detect(openIt)
+            # th1 = cv2.cuda.createCannyEdgeDetector(0, 100).detect(th1)
 
             # lines = cv2.cuda.createHoughSegmentDetector(1.0, np.pi / 180.0, 150, 5).detect(th1).download()
             # if lines is not None:
@@ -270,23 +275,27 @@ if __name__ == '__main__':
             distance_x = None
             if lines is not None:
                 # print(lines.shape)
-                # try:
-                #     for line in lines:
-                #         x1, y1, x2, y2 = line[0]
-                #         # if y1 < 50:
-                #         #     line[1] = 150
-                #         # if y2 < 50:
-                #         #     line[3] = 150
-                #         cv2.line(frame, (x1, y1), (x2, y2), (255, 0, 0), 3)  # 線條
-                # except:
-                #     traceback.print_exc()
-                #     pass
+                try:
+                    for line in lines:
+                        x1, y1, x2, y2 = line[0]
+                        # if y1 < 50:
+                        #     line[1] = 150
+                        # if y2 < 50:
+                        #     line[3] = 150
+                        cv2.line(frame, (x1, y1), (x2, y2), (255, 0, 0), 3)  # 線條
+                except:
+                    traceback.print_exc()
+                    pass
                 distance_x = draw_lanes(frame, lines)
+
             if distance_x is not None:
                 output = pid.update(distance_x)
                 turn = output / 100.0
                 value_left = left_default - turn / 2.0
                 value_right = right_default + turn / 2.0
+                value_left_pre = value_left
+                value_right_pre = value_right
+
                 # print('turn:', turn, 'value_left:', value_left, 'value_right:', value_right)
                 cv2.putText(frame, 'OUT: {:.0f}'.format(output), (10, 300), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 255),
                             1, cv2.LINE_AA)
@@ -299,6 +308,12 @@ if __name__ == '__main__':
 
                 # if time.time() - sys_start > args.delay_time:
                 robot.set_motors(value_left, value_right)
+            else:
+                robot.set_motors(value_right_pre, value_left_pre)
+                cv2.putText(frame, 'Left: {:.3f}'.format(value_left_pre), (10, 400), cv2.FONT_HERSHEY_TRIPLEX, 1,
+                            (0, 255, 255), 1, cv2.LINE_AA)
+                cv2.putText(frame, 'Right: {:.3f}'.format(value_right_pre), (10, 450), cv2.FONT_HERSHEY_TRIPLEX, 1,
+                            (0, 255, 255), 1, cv2.LINE_AA)
 
             if args.display_camera:
                 if args.draw_fps:
