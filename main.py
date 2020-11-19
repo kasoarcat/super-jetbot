@@ -163,6 +163,15 @@ def gstreamer_pipeline(capture_width=640, capture_height=480, display_width=640,
             'queue max-size-time=1 min-threshold-time=1 ! '
             'appsink' % (capture_width, capture_height, framerate, display_width, display_height))
 
+def executeFramePreprocess(frame):
+    gpu_img = cv2.cuda_GpuMat(frame)
+    gray = cv2.cuda.cvtColor(gpu_img, cv2.COLOR_RGB2GRAY)
+    f1 = cv2.cuda.bilateralFilter(gray, 9, 75, 75)  # 去噪音(模糊)
+    openIt = cv2.cuda.createMorphologyFilter(cv2.MORPH_OPEN, f1.type(), np.eye(2)).apply(f1)
+    _, th1 = cv2.cuda.threshold(openIt, 180, 225, cv2.THRESH_TOZERO)
+    th1 = th1.download() #the preprocessed image download from gpu
+
+    return th1
 
 if __name__ == '__main__':
     parser = ArgumentParser()
@@ -252,12 +261,7 @@ if __name__ == '__main__':
             # dilation = cv2.dilate(erosion, np.ones((2, 2), np.uint8), iterations=1)
             # _, th1 = cv2.threshold(dilation, 180, 225, cv2.THRESH_TOZERO)
             ## canny = cv2.cuda.Canny(dilation, 100, 200)
-
-            gpu_img = cv2.cuda_GpuMat(frame)
-            gray = cv2.cuda.cvtColor(gpu_img, cv2.COLOR_RGB2GRAY)
-            f1 = cv2.cuda.bilateralFilter(gray, 9, 75, 75)  # 去噪音(模糊)
-            openIt = cv2.cuda.createMorphologyFilter(cv2.MORPH_OPEN, f1.type(), np.eye(2)).apply(f1)
-            _, th1 = cv2.cuda.threshold(openIt, 180, 225, cv2.THRESH_TOZERO)
+        
             # th1 = cv2.cuda.createCannyEdgeDetector(0, 100).detect(th1)
 
             # lines = cv2.cuda.createHoughSegmentDetector(1.0, np.pi / 180.0, 150, 5).detect(th1).download()
@@ -275,8 +279,8 @@ if __name__ == '__main__':
             #     #     traceback.print_exc()
             #     #     pass
             #     distance_x = draw_lanes(frame, lines)
-
-            th1 = th1.download()
+            th1 = executeFramePreprocess(frame)
+        
             lines = cv2.HoughLinesP(th1, 1, np.pi / 180, 150, 5)
             distance_x = None
             if lines is not None:
@@ -306,7 +310,7 @@ if __name__ == '__main__':
                 ratio = -0.005 * abs(distance_x) + 1
                 value_left *= ratio
                 value_right *= ratio
-
+                
                 # print('turn:', turn, 'value_left:', value_left, 'value_right:', value_right)
                 cv2.putText(frame, 'RAT: {:.0f}'.format(ratio), (10, 100), cv2.FONT_HERSHEY_TRIPLEX, 1,
                             (0, 255, 255), 1, cv2.LINE_AA)
@@ -336,7 +340,7 @@ if __name__ == '__main__':
                     robot.set_motors(value_left_pre * 0.8, 0)
                 else: # 向左轉
                     robot.set_motors(0, value_left_pre * 0.8)
-
+                
                 cv2.putText(frame, 'Left: {:.3f}'.format(value_right_pre), (10, 400), cv2.FONT_HERSHEY_TRIPLEX, 1,
                             (0, 255, 255), 1, cv2.LINE_AA)
                 cv2.putText(frame, 'Right: {:.3f}'.format(value_left_pre), (10, 450), cv2.FONT_HERSHEY_TRIPLEX, 1,
