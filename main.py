@@ -306,9 +306,9 @@ if __name__ == '__main__':
             value_right = 0
 
             if direction: # 向右轉馬達設定
-                value_left = value_left_pre * 0.8
+                value_left = value_left_pre * 0.7
             else: # 向左轉馬達設定
-                value_right = value_right_pre * 0.8
+                value_right = value_right_pre * 0.7
                
             robot.set_motors(value_left, value_right)    
             frame = showOperationInfo(frame, value_left, value_right)   
