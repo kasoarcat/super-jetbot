@@ -7,7 +7,7 @@ import time
 # from sklearn.metrics.pairwise import cosine_similarity
 from argparse import ArgumentParser
 import traceback
-import nanocamera as nano
+# import nanocamera as nano
 from PID import PID
 # import select
 # import v4l2capture
@@ -173,6 +173,24 @@ def executeFramePreprocess(frame):
 
     return th1
 
+
+def showOperationInfo(frame, value_left, value_right, ratio=0, distance_x=0, output=0, turn=0):
+    # print('turn:', turn, 'value_left:', value_left, 'value_right:', value_right)
+    cv2.putText(frame, 'RAT: {:.0f}'.format(ratio), (10, 100), cv2.FONT_HERSHEY_TRIPLEX, 1,
+                (0, 255, 255), 1, cv2.LINE_AA)
+    cv2.putText(frame, 'DST: {:.0f}'.format(distance_x), (10, 150), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 255),
+                1, cv2.LINE_AA)
+    cv2.putText(frame, 'OUT: {:.0f}'.format(output), (10, 200), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 255),
+                1, cv2.LINE_AA)
+    cv2.putText(frame, 'Turn: {:.3f}'.format(turn), (10, 350), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 255),
+                1, cv2.LINE_AA)
+    cv2.putText(frame, 'Left: {:.3f}'.format(value_left), (10, 400), cv2.FONT_HERSHEY_TRIPLEX, 1,
+                (0, 255, 255), 1, cv2.LINE_AA)
+    cv2.putText(frame, 'Right: {:.3f}'.format(value_right), (10, 450), cv2.FONT_HERSHEY_TRIPLEX, 1,
+                (0, 255, 255), 1, cv2.LINE_AA)
+    return frame
+
+
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument("-w", "--write_video", default='result.avi', type=str)
@@ -242,127 +260,73 @@ if __name__ == '__main__':
 
     while(True):
         start = time.time()
+  
+        # # Wait for the device to fill the buffer.
+        # select.select((video,), (), ())
+        # image_data = video.read_and_queue()
+        # frame = cv2.imdecode(np.frombuffer(image_data, dtype=np.uint8), cv2.cv.CV_LOAD_IMAGE_COLOR)
+        frame = camera.value
 
-        # ret, frame = cap.read()
-        # if ret:
-        # if camera.isReady():
-        #     frame = camera.read()
-
-        if True:
-            # # Wait for the device to fill the buffer.
-            # select.select((video,), (), ())
-            # image_data = video.read_and_queue()
-            # frame = cv2.imdecode(np.frombuffer(image_data, dtype=np.uint8), cv2.cv.CV_LOAD_IMAGE_COLOR)
-            frame = camera.value
-
-            # gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
-            # f1 = cv2.bilateralFilter(gray, 9, 75, 75)  # 去噪音(模糊)
-            # erosion = cv2.erode(f1, np.ones((2, 2), np.uint8), iterations=1)
-            # dilation = cv2.dilate(erosion, np.ones((2, 2), np.uint8), iterations=1)
-            # _, th1 = cv2.threshold(dilation, 180, 225, cv2.THRESH_TOZERO)
-            ## canny = cv2.cuda.Canny(dilation, 100, 200)
+        th1 = executeFramePreprocess(frame)
+    
+        lines = cv2.HoughLinesP(th1, 1, np.pi / 180, 150, 5)
         
-            # th1 = cv2.cuda.createCannyEdgeDetector(0, 100).detect(th1)
+        distance_x = None
+        if lines is not None:
+            try:
+                for line in lines:
+                    x1, y1, x2, y2 = line[0]
+                    # if y1 < 50:
+                    #     line[1] = 150
+                    # if y2 < 50:
+                    #     line[3] = 150
+                    cv2.line(frame, (x1, y1), (x2, y2), (255, 0, 0), 3)  # 線條
+            except:
+                traceback.print_exc()
+                pass
+            distance_x, direction = draw_lanes(frame, lines)
 
-            # lines = cv2.cuda.createHoughSegmentDetector(1.0, np.pi / 180.0, 150, 5).detect(th1).download()
-            # if lines is not None:
-            #     # print(lines.shape)
-            #     # try:
-            #     #     for line in lines[0]:
-            #     #         x1, y1, x2, y2 = line
-            #     #         # if y1 < 50:
-            #     #         #     line[1] = 150
-            #     #         # if y2 < 50:
-            #     #         #     line[3] = 150
-            #     #         cv2.line(frame, (x1, y1), (x2, y2), (255, 0, 0), 1)  # 線條
-            #     # except:
-            #     #     traceback.print_exc()
-            #     #     pass
-            #     distance_x = draw_lanes(frame, lines)
-            th1 = executeFramePreprocess(frame)
-        
-            lines = cv2.HoughLinesP(th1, 1, np.pi / 180, 150, 5)
-            distance_x = None
-            if lines is not None:
-                # print(lines.shape)
-                try:
-                    for line in lines:
-                        x1, y1, x2, y2 = line[0]
-                        # if y1 < 50:
-                        #     line[1] = 150
-                        # if y2 < 50:
-                        #     line[3] = 150
-                        cv2.line(frame, (x1, y1), (x2, y2), (255, 0, 0), 3)  # 線條
-                except:
-                    traceback.print_exc()
-                    pass
-                distance_x, direction = draw_lanes(frame, lines)
+        if distance_x is not None:
+            distance_x_pre = distance_x
+            output = pid.update(distance_x)
+            turn = output / 100.0
+            value_left = left_default - turn / 2.0
+            value_right = right_default + turn / 2.0
+            value_left_pre = value_left
+            value_right_pre = value_right
 
-            if distance_x is not None:
-                distance_x_pre = distance_x
-                output = pid.update(distance_x)
-                turn = output / 100.0
-                value_left = left_default - turn / 2.0
-                value_right = right_default + turn / 2.0
-                value_left_pre = value_left
-                value_right_pre = value_right
-
-                ratio = -0.005 * abs(distance_x) + 1
-                value_left *= ratio
-                value_right *= ratio
-                
-                # print('turn:', turn, 'value_left:', value_left, 'value_right:', value_right)
-                cv2.putText(frame, 'RAT: {:.0f}'.format(ratio), (10, 100), cv2.FONT_HERSHEY_TRIPLEX, 1,
-                            (0, 255, 255), 1, cv2.LINE_AA)
-                cv2.putText(frame, 'DST: {:.0f}'.format(distance_x), (10, 150), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 255),
-                            1, cv2.LINE_AA)
-                cv2.putText(frame, 'OUT: {:.0f}'.format(output), (10, 200), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 255),
-                            1, cv2.LINE_AA)
-                cv2.putText(frame, 'Turn: {:.3f}'.format(turn), (10, 350), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 255),
-                            1, cv2.LINE_AA)
-                cv2.putText(frame, 'Left: {:.3f}'.format(value_left), (10, 400), cv2.FONT_HERSHEY_TRIPLEX, 1,
-                            (0, 255, 255), 1, cv2.LINE_AA)
-                cv2.putText(frame, 'Right: {:.3f}'.format(value_right), (10, 450), cv2.FONT_HERSHEY_TRIPLEX, 1,
-                            (0, 255, 255), 1, cv2.LINE_AA)
-
-                # if time.time() - sys_start > args.delay_time:
-                robot.set_motors(value_left, value_right)
-            else:
-                # output = pid.update(distance_x_pre)
-
-                # cv2.putText(frame, 'Left: {:.3f}'.format(robot.right_motor.value), (10, 300), cv2.FONT_HERSHEY_TRIPLEX, 1,
-                #             (0, 255, 255), 1, cv2.LINE_AA)
-                # cv2.putText(frame, 'Right: {:.3f}'.format(robot.left_motor.value), (10, 350), cv2.FONT_HERSHEY_TRIPLEX, 1,
-                #             (0, 255, 255), 1, cv2.LINE_AA)
-
-                # robot.set_motors(value_right_pre * 0.5, value_left_pre * 0.5)
-                if direction: # 向右轉
-                    robot.set_motors(value_left_pre * 0.8, 0)
-                else: # 向左轉
-                    robot.set_motors(0, value_left_pre * 0.8)
-                
-                cv2.putText(frame, 'Left: {:.3f}'.format(value_right_pre), (10, 400), cv2.FONT_HERSHEY_TRIPLEX, 1,
-                            (0, 255, 255), 1, cv2.LINE_AA)
-                cv2.putText(frame, 'Right: {:.3f}'.format(value_left_pre), (10, 450), cv2.FONT_HERSHEY_TRIPLEX, 1,
-                            (0, 255, 255), 1, cv2.LINE_AA)
-
-            if args.display_camera:
-                if args.draw_fps:
-                    end = time.time()
-                    # 計算FPS
-                    fps = 1 / (end - start)
-                    cv2.putText(frame, 'FPS: {:.0f}'.format(fps), (10, 250), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 255),
-                                1, cv2.LINE_AA)
-                    # print("\rFPS: {:.0f}".format(fps), end='\n')
-                # cv2.imshow('frame', frame)
-
-            if args.write_video:
-                out.write(frame)
-            if cv2.waitKey(1) & 0xFF == ord('q') or cv2.waitKey(1) & 0xFF == 27:
-                break
-            if args.runtime != -1 and time.time() - sys_start >= args.runtime:
-                break
+            ratio = -0.005 * abs(distance_x) + 1
+            value_left *= ratio
+            value_right *= ratio
+            
+            frame = showOperationInfo(frame, value_left, value_right, ratio, distance_x, output, turn)
+            robot.set_motors(value_left, value_right)
         else:
+            if direction: # 向右轉
+                robot.set_motors(value_left_pre * 0.8, 0)
+            else: # 向左轉
+                robot.set_motors(0, value_left_pre * 0.8)
+                
+            frame = showOperationInfo(frame, value_left, value_right)   
+            
+
+        
+
+        if args.display_camera:
+            if args.draw_fps:
+                end = time.time()
+                # 計算FPS
+                fps = 1 / (end - start)
+                cv2.putText(frame, 'FPS: {:.0f}'.format(fps), (10, 250), cv2.FONT_HERSHEY_TRIPLEX, 1, (0, 255, 255),
+                            1, cv2.LINE_AA)
+                # print("\rFPS: {:.0f}".format(fps), end='\n')
+            # cv2.imshow('frame', frame)
+
+        if args.write_video:
+            out.write(frame)
+        if cv2.waitKey(1) & 0xFF == ord('q') or cv2.waitKey(1) & 0xFF == 27:
+            break
+        if args.runtime != -1 and time.time() - sys_start >= args.runtime:
             break
 
     if args.controller:
