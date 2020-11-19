@@ -302,11 +302,15 @@ if __name__ == '__main__':
             frame = showOperationInfo(frame, value_left, value_right, ratio, distance_x, output, turn)
             robot.set_motors(value_left, value_right)
         else:
-            if direction: # 向右轉
-                robot.set_motors(value_left_pre * 0.8, 0)
-            else: # 向左轉
-                robot.set_motors(0, value_left_pre * 0.8)
-                
+            value_left = 0
+            value_right = 0
+
+            if direction: # 向右轉馬達設定
+                value_left = value_left_pre * 0.8
+            else: # 向左轉馬達設定
+                value_right = value_right_pre * 0.8
+               
+            robot.set_motors(value_left, value_right)    
             frame = showOperationInfo(frame, value_left, value_right)   
             
 
