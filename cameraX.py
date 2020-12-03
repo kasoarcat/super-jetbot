@@ -46,6 +46,7 @@ class CameraX(SingletonConfigurable):
             self.start()
             
             print('Shape:', self.cap.get(cv2.CAP_PROP_FRAME_WIDTH), self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT), 'FPS:', self.cap.get(cv2.CAP_PROP_FPS))
+            print('Buffer:', self.cap.get(cv2.CAP_PROP_BUFFERSIZE))
         except:
             self.stop()
             raise RuntimeError('Could not initialize camera.  Please see error trace.')
