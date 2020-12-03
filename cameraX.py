@@ -16,19 +16,27 @@ class CameraX(SingletonConfigurable):
     # fps = traitlets.Integer(default_value=21).tag(config=True)
     # capture_width = traitlets.Integer(default_value=3280).tag(config=True)
     # capture_height = traitlets.Integer(default_value=2464).tag(config=True)
+    
     width = traitlets.Integer(default_value=224).tag(config=True)
     height = traitlets.Integer(default_value=224).tag(config=True)
     fps = traitlets.Integer(default_value=10).tag(config=True)
-    capture_width = traitlets.Integer(default_value=1280).tag(config=True)
-    capture_height = traitlets.Integer(default_value=720).tag(config=True)
+    capture_width = traitlets.Integer(default_value=640).tag(config=True)
+    capture_height = traitlets.Integer(default_value=480).tag(config=True)
+    cap = None
+    isVideo = False
     
     def __init__(self, *args, **kwargs):
         self.value = np.empty((self.height, self.width, 3), dtype=np.uint8)
         super(CameraX, self).__init__(*args, **kwargs)
-
+    
         try:
-            self.cap = cv2.VideoCapture(self._gst_str(), cv2.CAP_GSTREAMER)
             # cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+            if not kwargs.get('cap'):
+                self.cap = cv2.VideoCapture(self._gst_str(), cv2.CAP_GSTREAMER)
+            else:
+                self.isVideo = True
+                self.cap = kwargs['cap']
+            
             re, image = self.cap.read()
 
             if not re:
@@ -36,10 +44,11 @@ class CameraX(SingletonConfigurable):
 
             self.value = image
             self.start()
+            
+            print('Shape:', self.cap.get(cv2.CAP_PROP_FRAME_WIDTH), self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT), 'FPS:', self.cap.get(cv2.CAP_PROP_FPS))
         except:
             self.stop()
-            raise RuntimeError(
-                'Could not initialize camera.  Please see error trace.')
+            raise RuntimeError('Could not initialize camera.  Please see error trace.')
 
         atexit.register(self.stop)
 
@@ -49,6 +58,8 @@ class CameraX(SingletonConfigurable):
             if re:
                 self.value = image
             else:
+                if self.isVideo:
+                    self.value = None
                 break
                 
     def _gst_str(self):
@@ -67,6 +78,7 @@ class CameraX(SingletonConfigurable):
 
     def start(self):
         if not self.cap.isOpened():
+            print('start cap not isOpened')
             self.cap.open(self._gst_str(), cv2.CAP_GSTREAMER)
         if not hasattr(self, 'thread') or not self.thread.isAlive():
             self.thread = threading.Thread(target=self._capture_frames)
