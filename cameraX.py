@@ -74,7 +74,7 @@ class CameraX(SingletonConfigurable):
             'videoconvert ! '
             'queue max-size-buffers=1 max-size-bytes=1 max-size-time=1 ! '
             'queue max-size-time=1 min-threshold-time=1 ! '
-            'appsink' % (self.capture_width, self.capture_height, self.fps, self.width, self.height)) # fakesink sync=true
+            'appsink' % (self.capture_width, self.capture_height, self.fps, self.width, self.height))
 
     def start(self):
         if not self.cap.isOpened():
